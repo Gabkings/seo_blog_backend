@@ -84,7 +84,8 @@ exports.signin = async (req, res) => {
         const { _id, username, name, email: userEmail, role } = user;
         return res.status(200).json({
             message: 'Signin successful',
-            user: { _id, username, name, email: userEmail, role, token: token },
+            user: { _id, username, name, email: userEmail, role },
+            token: token
         });
     } catch (error) {
         console.error('Error during signin:', error);
@@ -101,13 +102,78 @@ exports.signout = (req, res) =>{
     })
 }
 
-exports.private = (req, res) =>{
-    res.json({
-        message: " Auth is successful"
-    })
-}
+// exports.private = (req, res) =>{
+//     // console.log(req)
+//     res.json({
+//         user: req.user
+//     })
+// }
 
 exports.requireSignIn = expressjwt({
     secret: '2883127317usgssvzs',
     algorithms: ['HS256'], // Ensure the algorithm matches the one used for signing the JWT
 });
+
+exports.authMiddleware = async (req, res, next) => {
+    try {
+        console.log(req);
+        const authUserId = req.auth._id;
+
+        // Find the user by ID using async/await
+        const user = await User.findById(authUserId);
+
+        // If user is not found, respond with an error
+        if (!user) {
+            return res.status(400).json({
+                error: 'User not found',
+            });
+        }
+
+        // Attach the user profile to the request object
+        req.profile = user;
+
+        // Proceed to the next middleware
+        next();
+    } catch (err) {
+        // Handle any errors during the process
+        return res.status(500).json({
+            error: 'Server error',
+        });
+    }
+};
+
+
+exports.adminMiddleware = async (req, res, next) => {
+    try {
+        const adminUserId = req.user._id;
+
+        // Find the user by ID using async/await
+        const user = await User.findById(adminUserId);
+
+        // If user is not found, respond with an error
+        if (!user) {
+            return res.status(400).json({
+                error: 'User not found',
+            });
+        }
+
+        // Check if the user has an admin role
+        if (user.role !== 1) {
+            return res.status(403).json({
+                error: 'Admin resource. Access denied',
+            });
+        }
+
+        // Attach the user profile to the request object
+        req.profile = user;
+
+        // Proceed to the next middleware
+        next();
+    } catch (err) {
+        // Handle any server errors during the process
+        return res.status(500).json({
+            error: 'Server error',
+        });
+    }
+};
+
