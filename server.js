@@ -8,6 +8,7 @@ const blogRoute = require("./routes/blog")
 const authRoute =require("./routes/authRoutes")
 const userRoute =require("./routes/user")
 const categoryRoutes = require('./routes/category');
+const tagRoutes = require('./routes/tags');
 
 require('dotenv').config()
 
@@ -28,13 +29,7 @@ app.use("/api",blogRoute)
 app.use("/api",authRoute)
 app.use("/api",userRoute)
 app.use("/api",categoryRoutes)
-
-
-
-// app.get("/api", (req, res) => {
-//     res.json({time : Date().toString()})
-// })
-
+app.use("/api",tagRoutes)
 
 const port = process.env.PORT || 8000
 
