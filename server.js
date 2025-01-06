@@ -7,6 +7,7 @@ const connectDB = require("./config/db");
 const blogRoute = require("./routes/blog")
 const authRoute =require("./routes/authRoutes")
 const userRoute =require("./routes/user")
+const categoryRoutes = require('./routes/category');
 
 require('dotenv').config()
 
@@ -26,6 +27,7 @@ if (process.env.NODE_ENV === 'development') {
 app.use("/api",blogRoute)
 app.use("/api",authRoute)
 app.use("/api",userRoute)
+app.use("/api",categoryRoutes)
 
 
 

@@ -116,7 +116,6 @@ exports.requireSignIn = expressjwt({
 
 exports.authMiddleware = async (req, res, next) => {
     try {
-        console.log(req);
         const authUserId = req.auth._id;
 
         // Find the user by ID using async/await
@@ -145,7 +144,7 @@ exports.authMiddleware = async (req, res, next) => {
 
 exports.adminMiddleware = async (req, res, next) => {
     try {
-        const adminUserId = req.user._id;
+        const adminUserId = req.auth._id;
 
         // Find the user by ID using async/await
         const user = await User.findById(adminUserId);
@@ -163,13 +162,12 @@ exports.adminMiddleware = async (req, res, next) => {
                 error: 'Admin resource. Access denied',
             });
         }
-
         // Attach the user profile to the request object
         req.profile = user;
-
         // Proceed to the next middleware
         next();
     } catch (err) {
+        console.log(err)
         // Handle any server errors during the process
         return res.status(500).json({
             error: 'Server error',
