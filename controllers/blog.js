@@ -1,4 +1,4 @@
-
+const mongoose = require("mongoose");
 
 const formidable = require('formidable');
 const fs = require('fs');
@@ -13,84 +13,107 @@ const { errorHandler } = require('../helpers/dbErrorHandler');
 const { smartTrim } = require('../helpers/blog');
 
 exports.create = async (req, res) => {
-    let form = new formidable.IncomingForm();
+    const form = new formidable.IncomingForm();
     form.keepExtensions = true;
 
-    form.parse(req, async (err, fields, files) => {
-        if (err) {
-            return res.status(400).json({
-                error: 'Image could not upload'
+    // Use a Promise to handle form.parse
+    const parseForm = () =>
+        new Promise((resolve, reject) => {
+            form.parse(req, (err, fields, files) => {
+                if (err) reject(err);
+                else resolve({ fields, files });
             });
-        }
+        });
 
+    try {
+        // Parse the form
+        const { fields, files } = await parseForm();
         const { title, body, categories, tags } = fields;
 
-        if (!title || !title.length) {
+        // Validate and parse categories and tags
+        const arrayOfCategories = String(categories)
+            .split(',')
+            .map((id) => id.trim())
+            .filter((id) => id) // Remove empty strings
+            .map((id) => new mongoose.Types.ObjectId(id)); // Convert to ObjectId
+
+        const arrayOfTags = String(tags)
+            .split(',')
+            .map((id) => id.trim())
+            .filter((id) => id) // Remove empty strings
+            .map((id) => new mongoose.Types.ObjectId(id)); // Convert to ObjectId
+
+        // Validate title
+        if (!title || !stripHtml(String(title)).result.trim()) {
             return res.status(400).json({
-                error: 'Title is required'
+                error: 'Title is required',
             });
         }
 
-        if (!body || body.length < 200) {
+        // Validate body
+        if (!body || stripHtml(String(body)).result.trim().length < 200) {
             return res.status(400).json({
-                error: 'Content is too short'
+                error: 'Content is too short',
             });
         }
 
-        if (!categories || categories.length === 0) {
+        // Validate categories
+        if (!arrayOfCategories.length) {
             return res.status(400).json({
-                error: 'At least one category is required'
+                error: 'At least one category is required',
             });
         }
 
-        if (!tags || tags.length === 0) {
+        // Validate tags
+        if (!arrayOfTags.length) {
             return res.status(400).json({
-                error: 'At least one tag is required'
+                error: 'At least one tag is required',
             });
         }
 
+        // Create and populate the blog object
         let blog = new Blog();
-        blog.title = title;
+        blog.title = Array.isArray(title) ? title.join(' ') : title;
         blog.body = body;
-        blog.slug = slugify(title).toLowerCase();
+        blog.excerpt = smartTrim(Array.isArray(body) ? body.join(' ') : body, 320, ' ', ' ...');
+        blog.slug = slugify(String(title)).toLowerCase();
         blog.mtitle = `${title} | ${process.env.APP_NAME}`;
-        blog.excerpt = smartTrim(body, 320, ' ', ' ...');
-        blog.mdesc = stripHtml(body.substring(0, 160)).result;
-        blog.postedBy = req.user._id;
+        blog.mdesc = stripHtml(String(body).substring(0, 160)).result.trim();
+        blog.postedBy = req.auth._id;
 
-        let arrayOfCategories = categories && categories.split(',');
-        let arrayOfTags = tags && tags.split(',');
-
+        // Handle photo upload
         if (files.photo) {
-            if (files.photo.size > 1000000000) {
+            if (files.photo.size > 10000000) {
                 return res.status(400).json({
-                    error: 'Image should be less than 1MB in size'
+                    error: 'Image should be less than 10MB in size',
                 });
             }
             blog.photo.data = fs.readFileSync(files.photo.path);
             blog.photo.contentType = files.photo.type;
         }
 
-        try {
-            const savedBlog = await blog.save();
-            const updatedBlogWithCategories = await Blog.findByIdAndUpdate(
-                savedBlog._id,
-                { $push: { categories: arrayOfCategories } },
-                { new: true }
-            );
+        // Save the blog and update with categories and tags
+        const savedBlog = await blog.save();
 
-            const updatedBlogWithTags = await Blog.findByIdAndUpdate(
-                updatedBlogWithCategories._id,
-                { $push: { tags: arrayOfTags } },
-                { new: true }
-            );
+        const updatedBlogWithCategories = await Blog.findByIdAndUpdate(
+            savedBlog._id,
+            { $push: { categories: { $each: arrayOfCategories } } },
+            { new: true }
+        );
 
-            res.json(updatedBlogWithTags);
-        } catch (error) {
-            res.status(400).json({
-                error: errorHandler(error)
-            });
-        }
-    });
+        const updatedBlogWithTags = await Blog.findByIdAndUpdate(
+            updatedBlogWithCategories._id,
+            { $push: { tags: { $each: arrayOfTags } } },
+            { new: true }
+        );
+
+        return res.json(updatedBlogWithTags);
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({
+            error: errorHandler(error),
+        });
+    }
 };
+
 
