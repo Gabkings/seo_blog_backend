@@ -10,6 +10,7 @@ let stripHtml;
 })();
 const Blog = require('../models/blog'); // Adjust the path as needed
 const { errorHandler } = require('../helpers/dbErrorHandler');
+const { smartTrim } = require('../helpers/blog');
 
 exports.create = async (req, res) => {
     let form = new formidable.IncomingForm();
@@ -53,6 +54,7 @@ exports.create = async (req, res) => {
         blog.body = body;
         blog.slug = slugify(title).toLowerCase();
         blog.mtitle = `${title} | ${process.env.APP_NAME}`;
+        blog.excerpt = smartTrim(body, 320, ' ', ' ...');
         blog.mdesc = stripHtml(body.substring(0, 160)).result;
         blog.postedBy = req.user._id;
 
