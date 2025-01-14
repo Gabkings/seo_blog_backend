@@ -7,8 +7,8 @@ exports.create = async (req, res) => {
     const slug = slugify(name).toLowerCase();
 
     try {
-        const category = new Tag({ name, slug });
-        const data = await category.save(); // Save the category and wait for the promise
+        const tag = new Tag({ name, slug });
+        const data = await tag.save(); // Save the category and wait for the promise
         res.json(data); // Send the saved data as a response
     } catch (err) {
         res.status(400).json({
@@ -32,15 +32,15 @@ exports.read = async (req, res) => {
     const slug = req.params.slug.toLowerCase();
 
     try {
-        const category = await Tag.findOne({ slug }); // Fetch category by slug
+        const tag = await Tag.findOne({ slug }); // Fetch category by slug
 
-        if (!category) {
+        if (!tag) {
             return res.status(404).json({
                 error: 'Tag not found',
             });
         }
 
-        res.json(category); // Send the category data as a response
+        res.json(tag); // Send the category data as a response
     } catch (err) {
         res.status(400).json({
             error: errorHandler(err),
