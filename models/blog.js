@@ -36,10 +36,10 @@ const blogSchema = new mongoose.Schema(
             contentType: String
         },
         categories: [{ type: ObjectId, ref: 'Category', required: true }],
-        tags: [{ type: ObjectId, ref: 'Tag', required: true }],
+        tags: [{ type: ObjectId, ref: 'Tags', required: true }],
         postedBy: {
             type: ObjectId,
-            ref: 'User'
+            ref: 'UserTable'
         }
     },
     { timestamp: true }

@@ -9,6 +9,8 @@ let stripHtml;
     stripHtml = module.stripHtml;
 })();
 const Blog = require('../models/blog'); // Adjust the path as needed
+const Tag = require('../models/tags'); // Adjust the path as needed
+const Category = require('../models/category'); // Adjust the path as needed
 const { errorHandler } = require('../helpers/dbErrorHandler');
 const { smartTrim } = require('../helpers/blog');
 
@@ -114,6 +116,91 @@ exports.create = async (req, res) => {
             error: errorHandler(error),
         });
     }
+};
+
+exports.list = async (req, res) => {
+    try {
+        const blogs = await Blog.find({})
+            .populate('categories', '_id name slug')
+            .populate('tags', '_id name slug')
+            .populate('postedBy', '_id name username')
+            .sort({ createdAt: -1 })
+            .select('_id title slug excerpt postedBy createdAt updatedAt');
+
+        res.json(blogs);
+    } catch (err) {
+        console.log(err)
+        res.json({
+            error: errorHandler(err),
+        });
+    }
+};
+
+
+exports.listAll = async (req, res) => {
+    try {
+        const limit = req.body.limit ? parseInt(req.body.limit) : 10;
+        const skip = req.body.skip ? parseInt(req.body.skip) : 0;
+
+        // Fetch blogs with pagination
+        const blogs = await Blog.find({})
+            .populate('categories', '_id name slug')
+            .populate('tags', '_id name slug')
+            .populate('postedBy', '_id name username profile')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .select('_id title slug excerpt postedBy createdAt updatedAt');
+
+        // Fetch all categories
+        const categories = await Category.find({});
+
+        // Fetch all tags
+        const tags = await Tag.find({});
+
+        // Send response with blogs, categories, tags, and blogs count
+        res.json({ blogs, categories, tags, size: blogs.length });
+    } catch (err) {
+        console.log(err)
+        res.json({ error: errorHandler(err) });
+    }
+};
+
+
+exports.read = async (req, res) => {
+    const slug = req.params.slug.toLowerCase();
+    try{
+        const blog = await  Blog.findOne({ slug })
+            .populate('categories', '_id name slug')
+            .populate('tags', '_id name slug')
+            .populate('postedBy', '_id name username')
+            .select('_id title body slug mtitle mdesc categories tags postedBy createdAt updatedAt')
+        return res.status(200).json(blog)
+    }catch (e) {
+        console.log(e)
+        return res.status(400).json({
+            error: errorHandler(e)
+        });
+    }
+
+};
+
+exports.remove = async (req, res) => {
+    const slug = req.params.slug.toLowerCase();
+    try{
+        const blog = await Blog.findOneAndDelete({ slug })
+           return  res.json({
+                message: 'Blog deleted successfully'
+            });
+    }catch (e) {
+        return res.json({
+            error: errorHandler(err)
+        });
+    }
+};
+
+exports.update = (req, res) => {
+    //
 };
 
 
