@@ -190,17 +190,87 @@ exports.remove = async (req, res) => {
     try{
         const blog = await Blog.findOneAndDelete({ slug })
            return  res.json({
-                message: 'Blog deleted successfully'
+                message: 'Blog deleted successfully',
+                data: blog
             });
     }catch (e) {
         return res.json({
-            error: errorHandler(err)
+            error: errorHandler(e)
         });
     }
 };
 
-exports.update = (req, res) => {
-    //
+exports.update = async (req, res) => {
+    try {
+        const slug = req.params.slug.toLowerCase();
+        let oldBlog = await Blog.findOne({ slug });
+        if (!oldBlog) {
+            return res.status(400).json({ error: 'Blog not found' });
+        }
+
+        const form = new formidable.IncomingForm();
+        form.keepExtensions = true;
+
+        form.parse(req, async (err, fields, files) => {
+            if (err) {
+                return res.status(400).json({ error: 'Image could not upload' });
+            }
+
+            let slugBeforeMerge = oldBlog.slug;
+            oldBlog = _.merge(oldBlog, fields);
+            oldBlog.slug = slugBeforeMerge;
+
+            const { body, categories, tags } = fields;
+
+            if (body) {
+                oldBlog.excerpt = smartTrim(body, 320, ' ', ' ...');
+                oldBlog.desc = stripHtml(body.substring(0, 160));
+            }
+
+            if (categories) {
+                oldBlog.categories = categories.split(',');
+            }
+
+            if (tags) {
+                oldBlog.tags = tags.split(',');
+            }
+
+            if (files.photo) {
+                if (files.photo.size > 100000000) {
+                    return res.status(400).json({
+                        error: 'Image should be less than 1MB in size'
+                    });
+                }
+                oldBlog.photo.data = fs.readFileSync(files.photo.path);
+                oldBlog.photo.contentType = files.photo.type;
+            }
+
+            try {
+                const result = await oldBlog.save();
+                res.json(result);
+            } catch (saveError) {
+                return res.status(400).json({ error: errorHandler(saveError) });
+            }
+        });
+    } catch (err) {
+        return res.status(500).json({ error: 'Internal server error' });
+    }
 };
 
+
+exports.photo = async (req, res) => {
+    try {
+        const slug = req.params.slug.toLowerCase();
+        const blog = await Blog.findOne({ slug }).select('photo');
+
+        if (!blog) {
+            return res.status(400).json({ error: 'Blog not found' });
+        }
+
+        res.set('Content-Type', blog.photo.contentType);
+        return res.send(blog.photo.data);
+    } catch (err) {
+        return res.status(400).json({ error: errorHandler(err) });
+    }
+};
 
