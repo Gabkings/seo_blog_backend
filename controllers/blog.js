@@ -30,6 +30,7 @@ exports.create = async (req, res) => {
     try {
         // Parse the form
         const { fields, files } = await parseForm();
+        console.log(files)
         const { title, body, categories, tags } = fields;
 
         // Validate and parse categories and tags
@@ -85,13 +86,16 @@ exports.create = async (req, res) => {
 
         // Handle photo upload
         if (files.photo) {
+            let fileUpld = files.photo[0].filepath
+            let fileType = files.photo[0].type
+            console.log("File uploaded ==> ",fileUpld)
             if (files.photo.size > 10000000) {
                 return res.status(400).json({
                     error: 'Image should be less than 10MB in size',
                 });
             }
-            blog.photo.data = fs.readFileSync(files.photo.path);
-            blog.photo.contentType = files.photo.type;
+            blog.photo.data = fs.readFileSync(fileUpld);
+            blog.photo.contentType = fileType;
         }
 
         // Save the blog and update with categories and tags
