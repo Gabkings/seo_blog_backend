@@ -278,3 +278,54 @@ exports.photo = async (req, res) => {
     }
 };
 
+
+exports.listRelated = async (req, res) => {
+    try {
+        const limit = req.body.limit ? parseInt(req.body.limit) : 3;
+        const { _id, categories } = req.body.blog;
+
+        const blogs = await Blog.find({
+            _id: { $ne: _id },
+            categories: { $in: categories }
+        })
+            .limit(limit)
+            .populate('postedBy', '_id name username profile')
+            .select('title slug excerpt postedBy createdAt updatedAt')
+            .exec();
+
+        if (!blogs.length) {
+            return res.status(400).json({ error: 'Blogs not found' });
+        }
+
+        res.json(blogs);
+
+    } catch (err) {
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+
+exports.listSearch = async (req, res) => {
+    const { search } = req.query;
+
+    if (search) {
+        try {
+            const blogs = await Blog.find({
+                $or: [
+                    { title: { $regex: search, $options: 'i' } },
+                    { body: { $regex: search, $options: 'i' } }
+                ]
+            }).select('-photo -body');
+
+            res.json(blogs);
+        } catch (err) {
+            return res.status(400).json({
+                error: errorHandler(err)
+            });
+        }
+    } else {
+        res.status(400).json({ error: 'Search query is missing' });
+    }
+};
+
+
