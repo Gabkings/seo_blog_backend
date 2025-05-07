@@ -9,6 +9,7 @@ let stripHtml;
     stripHtml = module.stripHtml;
 })();
 const Blog = require('../models/blog'); // Adjust the path as needed
+const User = require('../models/user'); // Adjust the path as needed
 const Tag = require('../models/tags'); // Adjust the path as needed
 const Category = require('../models/category'); // Adjust the path as needed
 const { errorHandler } = require('../helpers/dbErrorHandler');
@@ -327,5 +328,28 @@ exports.listSearch = async (req, res) => {
         res.status(400).json({ error: 'Search query is missing' });
     }
 };
+
+
+exports.listByUser = async (req, res) => {
+    try {
+        const user = await User.findOne({ username: req.params.username });
+
+        if (!user) {
+            return res.status(400).json({ error: 'User not found' });
+        }
+
+        const blogs = await Blog.find({ postedBy: user._id })
+            .populate('categories', '_id name slug')
+            .populate('tags', '_id name slug')
+            .populate('postedBy', '_id name username')
+            .select('_id title slug postedBy createdAt updatedAt');
+
+        res.json(blogs);
+    } catch (err) {
+        return res.status(400).json({ error: errorHandler(err) });
+    }
+};
+
+
 
 
