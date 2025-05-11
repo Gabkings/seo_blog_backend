@@ -21,11 +21,10 @@ app.use(cookieParser())
 app.use(express.json());
 connectDB()
 
-if (process.env.NODE_ENV === 'development') {
-    app.use(cors({ origin: `${process.env.CLIENT_URL}` }));
-}else{
-    app.use(cors({ origin: `${process.env.CLIENT_URL_PROD}` }));
-}
+app.use(cors({
+    origin: ['http://68.183.110.168', 'http://localhost:3000'], // Add your frontend origins here
+    credentials: true
+}));
 // app.use(cors())
 app.use("/api",blogRoutes)
 app.use("/api",authRoute)
